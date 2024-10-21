@@ -1,0 +1,275 @@
+<!DOCTYPE HTML>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>SMART FARM</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Firebase SDK (Modular) -->
+  <script type="module">
+    // Import Firebase SDK
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.1.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.1.0/firebase-database.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDPDWJ0DjAjPUSh7GCYW1QQ3KLLPP1pV_c",
+      authDomain: "smartfarm-b1cd9.firebaseapp.com",
+      databaseURL: "https://smartfarm-b1cd9-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "smartfarm-b1cd9",
+      storageBucket: "smartfarm-b1cd9.appspot.com",
+      messagingSenderId: "88304625615",
+      appId: "1:88304625615:web:f2d7b121b6b74b4a6014ba",
+      measurementId: "G-CLD4D9HW04"
+    };
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Function to update the data on the page
+    function updateData(logData) {
+      const temperatureElem = document.querySelector("#temperature > .content");
+      const humidityElem = document.querySelector("#humidity > .content");
+      const ledStatusElem = document.querySelector("#led-status > .content");
+      const fanStatusElem = document.querySelector("#fan-status > .content");
+      const pumpStatusElem = document.querySelector("#pump-status > .content");
+      const lightElem = document.querySelector("#light > .content");
+
+      temperatureElem.innerHTML = logData.temperature + " &deg;C";
+      humidityElem.textContent = logData.humidity + " %";
+      lightElem.innerHTML = Math.round(logData.light) + " lx";
+
+      // Update LED, FAN, and PUMP statuses
+      ledStatusElem.textContent = logData.led === "ON" ? "ON" : "OFF";
+      fanStatusElem.textContent = logData.fan === "ON" ? "ON" : "OFF";
+      pumpStatusElem.textContent = logData.pump === "ON" ? "ON" : "OFF";
+
+      const ledStatusDialog = document.querySelector("#led-status");
+      if (logData.led === "ON") {
+        ledStatusDialog.classList.remove("danger");
+        ledStatusDialog.classList.add("success");
+      } else {
+        ledStatusDialog.classList.remove("success");
+        ledStatusDialog.classList.add("danger");
+      }
+
+      const fanStatusDialog = document.querySelector("#fan-status");
+      if (logData.fan === "ON") {
+        fanStatusDialog.classList.remove("danger");
+        fanStatusDialog.classList.add("success");
+      } else {
+        fanStatusDialog.classList.remove("success");
+        fanStatusDialog.classList.add("danger");
+      }
+
+      const pumpStatusDialog = document.querySelector("#pump-status");
+      if (logData.pump === "ON") {
+        pumpStatusDialog.classList.remove("danger");
+        pumpStatusDialog.classList.add("success");
+      } else {
+        pumpStatusDialog.classList.remove("success");
+        pumpStatusDialog.classList.add("danger");
+      }
+
+    }
+
+    // Fetch and display log history
+    function fetchLogHistory() {
+      const logsRef = ref(db, 'logs');
+      onValue(logsRef, (snapshot) => {
+        const data = snapshot.val();
+        const logsArray = Object.values(data);
+
+        // Sort logs by time
+        logsArray.sort((a, b) => new Date(a.time) - new Date(b.time));
+
+        // Prepare data for the chart
+        const chartData = logsArray.map(log => ({
+          x: new Date(log.time),
+          y: [log.temperature, log.humidity]
+        }));
+
+        // Render the chart
+        renderChart(chartData);
+      });
+    }
+
+    // Function to render the chart using CanvasJS
+    function renderChart(data) {
+      const chart = new CanvasJS.Chart("chartContainer", {
+        animationEnabled: true,
+        theme: "light2",
+        title: {
+          text: "Temperature and Humidity History"
+        },
+        axisX: {
+          title: "Time",
+          valueFormatString: "YYYY/MM/DD HH:mm:ss"
+        },
+        axisY: {
+          title: "Values",
+          prefix: ""
+        },
+        data: [{
+          type: "line",
+          name: "Temperature (°C)",
+          showInLegend: true,
+          dataPoints: data.map(point => ({
+            x: point.x,
+            y: point.y[0]
+          }))
+        }, {
+          type: "line",
+          name: "Humidity (%)",
+          showInLegend: true,
+          dataPoints: data.map(point => ({
+            x: point.x,
+            y: point.y[1]
+          }))
+        }]
+      });
+      chart.render();
+    }
+
+    // Listen for changes in Firebase Database for the latest log
+    const logsRef = ref(db, 'logs');
+    onValue(logsRef, (snapshot) => {
+      const data = snapshot.val();
+      const lastLog = Object.values(data).pop(); // Get the last log entry
+      updateData(lastLog);
+    });
+
+    // Call the function to fetch and display logs
+    fetchLogHistory();
+  </script>
+
+  <!-- jQuery -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+
+  <!-- canvasjs -->
+  <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+
+  <!-- Material Design fonts -->
+  <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Roboto:300,400,500,700" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+  <style>
+    .dialog {
+      width: 100%;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 6px 0 rgba(0, 0, 0, 0.12), 0 1px 6px 0 rgba(0, 0, 0, 0.12);
+    }
+
+    .dialog>.content {
+      padding: 30px 0;
+      border-radius: 6px 6px 0 0;
+      font-size: 64px;
+      color: rgba(255, 255, 255, 0.84);
+      text-align: center;
+    }
+
+    .dialog.primary>.content {
+      background: #00aa9a;
+    }
+
+    .dialog.success>.content {
+      background: #59b75c;
+    }
+
+    .dialog.info>.content {
+      background: #03a9f4;
+    }
+
+    .dialog.danger>.content {
+      background: #f44336;
+    }
+
+    .dialog>.title {
+      background: #FFF;
+      border-radius: 0 0 6px 6px;
+      font-size: 22px;
+      color: rgba(0, 0, 0, 0.87);
+      text-align: center;
+      padding: 10px 0;
+      font-weight: bold;
+    }
+
+    .nav-tabs {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>SMART FARM | Temperature & Humidity & Light & Fan & Pump <small>Dashboard</small></h1>
+    <hr />
+
+    <!-- Nav tabs -->
+    <ul class="nav nav-tabs" role="tablist">
+      <li role="presentation" class="active"><a href="#overview" aria-controls="home" role="tab"
+          data-toggle="tab">Overview</a></li>
+      <li role="presentation"><a href="#history" aria-controls="profile" role="tab" data-toggle="tab">History</a></li>
+    </ul>
+
+    <!-- Tab panes -->
+    <div class="tab-content">
+      <div role="tabpanel" class="tab-pane active" id="overview">
+        <div class="row">
+          <div class="col-sm-4">
+            <div class="dialog primary" id="temperature">
+              <div class="content">00.0 &deg;C</div>
+              <div class="title">Temperature</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="dialog info" id="humidity">
+              <div class="content">00.0 %</div>
+              <div class="title">Humidity</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="dialog info" id="light">
+              <div class="content">00.0 lx</div>
+              <div class="title">Light</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="dialog success" id="led-status">
+              <div class="content">OFFLINE</div>
+              <div class="title">LED Status</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="dialog success" id="fan-status">
+              <div class="content">OFF</div>
+              <div class="title">Fan Status</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="dialog success" id="pump-status">
+              <div class="content">OFF</div>
+              <div class="title">Pump Status</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div role="tabpanel" class="tab-pane" id="history">
+        <div class="row">
+          <div class="col-sm-12">
+            <div id="chartContainer" style="height: 370px; width: 100%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
